@@ -1,0 +1,598 @@
+#define _CRT_SECURE_NO_DEPRECATE
+#include <stdio.h>
+#include <png.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
+#include < math.h >
+
+// политра пикселей. 
+
+typedef struct {
+	uint8_t red;
+	uint8_t green;
+	uint8_t blue;
+	uint8_t alpha;
+} pixel_t;
+
+// характеристики картинки. 
+
+typedef struct {
+	pixel_t *pixels;
+	size_t width;
+	size_t height;
+} bitmap_t;
+
+// создание карты пиксилей
+//("x", "y"). 
+
+static pixel_t * pixel_at(bitmap_t * bitmap, int x, int y)
+{
+	return bitmap->pixels + bitmap->width * y + x;
+}
+
+//запись битовай карты  в специальный файл "path". 
+
+static int save_png_to_file(bitmap_t *bitmap, const char *path)
+{
+	FILE * fp;
+	png_structp png_ptr = NULL;
+	png_infop info_ptr = NULL;
+	size_t x, y;
+	png_byte ** row_pointers = NULL;
+	/* "статус" содержит возвращаемое значение этой функции. Сначала
+он устанавливается в значение, которое означает "сбой". Когда рутина
+закончила свою работу, ей присваивается значение, означающее
+"успех".*/
+	int status = -1;
+	int pixel_size = 4;
+	int depth = 8;
+
+	fp = fopen(path, "wb");
+	if (!fp) {
+		goto fopen_failed;
+	}
+
+	png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+	if (png_ptr == NULL) {
+		goto png_create_write_struct_failed;
+	}
+
+	info_ptr = png_create_info_struct(png_ptr);
+	if (info_ptr == NULL) {
+		goto png_create_info_struct_failed;
+	}
+
+	// Настройка обработки ошибок
+
+	if (setjmp(png_jmpbuf(png_ptr))) {
+		goto png_failure;
+	}
+
+	// Настройка атрибутов изображения. 
+
+	png_set_IHDR(png_ptr,
+		info_ptr,
+		bitmap->width,
+		bitmap->height,
+		depth,
+		PNG_COLOR_TYPE_RGBA,
+		PNG_INTERLACE_NONE,
+		PNG_COMPRESSION_TYPE_DEFAULT,
+		PNG_FILTER_TYPE_DEFAULT);
+
+	// Инициализация строк png.
+
+	row_pointers = png_malloc(png_ptr, bitmap->height * sizeof(png_byte *));
+	for (y = 0; y < bitmap->height; ++y) {
+		png_byte *row =
+			png_malloc(png_ptr, sizeof(uint8_t) * bitmap->width * pixel_size);
+		row_pointers[y] = row;
+		for (x = 0; x < bitmap->width; ++x) {
+			pixel_t * pixel = pixel_at(bitmap, x, y);
+			*row++ = pixel->red;
+			*row++ = pixel->green;
+			*row++ = pixel->blue;
+			*row++ = pixel->alpha;
+		}
+	}
+
+	//Запиcm данны[ изображения в "fp".
+
+	png_init_io(png_ptr, fp);
+	png_set_rows(png_ptr, info_ptr, row_pointers);
+	png_write_png(png_ptr, info_ptr, PNG_TRANSFORM_IDENTITY, NULL);
+
+	// Процедура успешно записала файл, поэтому мы установили
+ //"статус" - значение, указывающее на успех.
+
+	status = 0;
+
+	for (y = 0; y < bitmap->height; y++) {
+		png_free(png_ptr, row_pointers[y]);
+	}
+	png_free(png_ptr, row_pointers);
+
+png_failure:
+png_create_info_struct_failed:
+	png_destroy_write_struct(&png_ptr, &info_ptr);
+png_create_write_struct_failed:
+	fclose(fp);
+fopen_failed:
+	return status;
+}
+
+//Учитывая "значение" и "макс", максимальное значение, которое мы ожидаем, что "значение" примет,
+//это возвращает целое число от 0 до 255, 
+//пропорциональное "значению", деленному на "макс".
+
+static int pix(int value, int max)
+{
+	if (value < 0)
+		return 0;
+	return (int)(256.0 *((double)(value) / (double)max));
+}
+//Заполнение массива случайными числами
+static int random (int array[], int n,bitmap_t fruit, int c,char surname[] )
+{
+	int i;
+	for ( i = 0; i < n; i++) 
+	{
+		array[i] = rand() % n; // диапазон случайных чисед от 0 до n
+		//c++;
+		c = png(i, n,c,fruit,array[i],surname,0);
+		printf("%d ", array[i]);
+	}
+
+	return c;
+}
+static int BinarySearch_Rec(int array [],  int key, int left, int right, bitmap_t fruit, int c, char s[])
+{
+	// поиск среднего индекса
+	int mid = left + (right - left) / 2; //вычисление ср эл - та
+	// закоашивание пикселя левой границы поиска 
+	pixel_t * pixel = pixel_at(&fruit, left, array[left]);
+	pixel->red = 0;
+	pixel->green = 255;
+	pixel->blue = 0;
+	pixel->alpha = 255;
+	//c++;
+	c=png(0, 0, c, fruit, 0, s, 1);
+
+	//закрашивание пикселя правой границы поиска
+	pixel = pixel_at(&fruit, right, array[right]);
+	pixel->red = 0;
+	pixel->green = 0;
+	pixel->blue = 255;
+	pixel->alpha = 255;
+	//c++;
+	c=png(0, 0, c, fruit, 0, s, 1);
+
+	//закрашивание пикселя среднего значения
+	 pixel = pixel_at(&fruit, mid, array[mid]);
+	pixel->red = 255;
+	pixel->green = 0;
+	pixel->blue = 0;
+	pixel->alpha = 255;
+	//c++;
+	c=png(0, 0, c, fruit, 0, s, 1);
+	// Границы сошлись, элемент не найден
+	if (left > right)
+	{
+		return  -1;
+
+	}
+	//вывод ключа при нахождении  средним значением
+	if (array[mid] == key)
+	{
+		//закрашивание остальных пикселей, не являющимеся ключом
+		for (int i = left; i <= right; i++)
+		{
+			//условие незакрашивания ключа
+			if (i != mid)
+			{
+
+				pixel = pixel_at(&fruit, i, array[i]);
+				pixel->red = 255;
+				pixel->green = 255;
+				pixel->blue = 255;
+				pixel->alpha = 205;
+				//c++;
+				c=png(0, 0, c, fruit, 0, s, 1);
+			}
+		}
+		return mid;
+	}
+	// иначе если среднее значение больше ключа
+	else if ((array[mid] > key))
+	{
+		//закрашиваем правую границу после перестановки 
+		for (int i = right; i > mid; i--)
+		{
+			pixel = pixel_at(&fruit, i, array[i]);
+			pixel->red = 255;
+			pixel->green =255;
+			pixel->blue = 255;
+			pixel->alpha = 5;
+			//c++;
+			c=png(0, 0, c, fruit, 0, s, 1);
+		}
+
+		// переставляем правую границу на место среднего значения
+		return BinarySearch_Rec(array,  key, left, mid,fruit,c,s);
+	}
+	// иначе если среднее значение меньше ключа
+	else
+	{
+		//закрашиваем левую границу после перестановки на место следующее за средним значением
+		
+		for (int i = left; i <= mid; i++)
+		{
+			pixel = pixel_at(&fruit, i, array[i]);
+			pixel->red = 255;
+			pixel->green = 255;
+			pixel->blue = 255;
+			pixel->alpha = 205;
+			//c++;
+			c=png(0, 0, c, fruit, 0, s, 1);
+		}
+		//перестановка левой границы
+		return BinarySearch_Rec(array, key, mid + 1, right, fruit,c,s);
+	}
+
+}
+
+
+//Вызов рекурсивного алгоритма сортирровки
+static int BinarySearch_Rec_Wrapper(int array [], int key, int N, bitmap_t fruit, int c, char s[])
+{
+	if (N == 0)
+		return -1;
+
+	return BinarySearch_Rec(array, key, 0, N-1,fruit,  c,  s);
+}
+/*static int BinarySearch_Rec_Wrapper_first(int array[], int key, int N, bitmap_t fruit, int c, char s[])
+{
+	if (N == 0)
+		return -1;
+
+	
+	return BinarySearch_Rec_first(array,  key, 0, N-1,fruit,  c,  s);
+}*/
+static int BinarySearch_Iter(int array [], int key,int N, bitmap_t fruit, int c, char s[])
+{
+	//объявление переременных
+	int left = 0;
+	int right = N;
+	int mid = 0;
+
+	//пока границы не сошлись ввыполняй
+	while (!(left >= right))
+	{
+
+		//поиск индекса  ср - эл та
+		mid = left + (right - left) / 2;
+
+		pixel_t * pixel = pixel_at(&fruit, left, array[left]);
+		pixel->red = 0;
+		pixel->green = 255;
+		pixel->blue = 0;
+		pixel->alpha = 255;
+		//c++;
+		c = png(0, 0, c, fruit, 0, s, 1);
+
+		//закрашивание пикселя правой границы поиска
+		pixel = pixel_at(&fruit, right, array[right]);
+		pixel->red = 0;
+		pixel->green = 0;
+		pixel->blue = 255;
+		pixel->alpha = 255;
+		//c++;
+		c = png(0, 0, c, fruit, 0, s, 1);
+
+		//закрашивание пикселя среднего значения
+		pixel = pixel_at(&fruit, mid, array[mid]);
+		pixel->red = 255;
+		pixel->green = 0;
+		pixel->blue = 0;
+		pixel->alpha = 255;
+		//c++;
+		c = png(0, 0, c, fruit, 0, s, 1);
+
+		//если центральное значение раврняется ключу
+		if (array[mid] == key)
+		{
+			//цикл закрашивания пикселей
+			for (int i = 0 /*left*/; i <= N /*right*/; i++)
+			{
+				pixel = pixel_at(&fruit, i, array[i]);
+				pixel->red = 255;
+				pixel->green = 255;
+				pixel->blue = 255;
+				pixel->alpha = 255;
+				//c++;
+				c = png(0, 0, c, fruit, 0, s, 1);
+				//условие незакрашивания ключа
+				if (i == mid)
+				{
+
+					pixel = pixel_at(&fruit, i, array[i]);
+					pixel->red = 255;
+					pixel->green = 0;
+					pixel->blue = 0;
+					pixel->alpha = 255;
+					//c++;
+					c = png(0, 0, c, fruit, 0, s, 1);
+				}
+			}
+			return mid;
+		}
+		//если элемент находится правее ключа
+		if ((array[mid] > key) )
+		{
+			//закрашиваем правую границу после перестановки 
+			for (int i = right; i > mid; i--)
+			{
+				//закрашивание пикселя
+				pixel = pixel_at(&fruit, i, array[i]);
+				pixel->red = 255;
+				pixel->green = 255;
+				pixel->blue = 255;
+				pixel->alpha = 205;
+				//c++;
+				c = png(0, 0, c, fruit, 0, s, 1);
+			}
+			right = mid;
+		}
+		else
+		{
+			//закрашиваем левую границу после перестановки на место следующее за средним значением
+
+			for (int i = left; i <= mid; i++)
+			{
+				pixel = pixel_at(&fruit, i, array[i]);
+				pixel->red = 255;
+				pixel->green = 255;
+				pixel->blue = 255;
+				pixel->alpha = 205;
+				//c++;
+				c = png(0, 0, c, fruit, 0, s, 1);
+			}
+			left = mid + 1;
+		}
+	}
+
+	return (1 + left);
+}
+
+/*static int BinarySearch_Rec_first(int array[], int key, int left, int right, bitmap_t fruit, int c, char s[])
+{
+	int mid = left + (right - left) / 2;
+
+	if (left >= right)
+		return -(1 + left);
+
+			return left;
+
+	if (array[mid] == key)
+	{
+		if (mid == left + 1)
+			return mid;
+		}
+		else
+			return BinarySearch_Rec_first(array, key, left, mid + 1, fruit, c, s);
+	}
+
+	else if ((array[mid] > key) )
+	{
+
+				// переставляем правую границу на место среднего значения
+		return BinarySearch_Rec(array,  key, left, mid, fruit, c, s);
+
+	}
+	else
+	{
+		return BinarySearch_Rec(array, key, mid + 1, right, fruit, c, s);
+	}
+}*/
+// окно вывода функции итеративного поиска
+static int BinarySearch_Iter_Wrapper(int array[], int key, int N, bitmap_t fruit, int c, char s[])
+{
+	if (N == 0)
+		return -1;
+	
+	return BinarySearch_Iter(array, key, N-1,fruit, c, s);
+}
+//сортировка вставками
+static int InsertionSort(int n, int mass[], bitmap_t fruit)
+{
+int newElement, location;
+// цикл итерации по масссиву
+for (int i = 0; i < n; i++)
+{
+	//временная переменная
+	newElement = mass[i];
+	//цикл замены
+	for (location = i - 1;location >= 0 && mass[location] > newElement;location--)
+	{
+		//замена элементов
+		mass[location + 1] = mass[location];
+		mass[location] = newElement;
+	}
+}
+}
+//создание изображения
+static  int png(int index, int n, int i,bitmap_t fruit,int arrayValue,char s[],int bool)
+{
+	// условие закрашивание пиксель в черный
+	if (bool == 0)
+	{
+		// закрашивание пикселявчерный
+		pixel_t * pixel = pixel_at(&fruit, index, arrayValue);
+		pixel->red = 0;
+		pixel->green = 0;
+		pixel->blue = 0;
+	}
+
+	int a3;
+	// запись изображения в файл'0000.png'.
+	//объявляем переменные
+	float f, dc1, dc2, cc1, cc2;
+	f = i;
+	//выделяем тысячную целую часть
+	dc1 = modff((f-1)/1000, &cc1);
+	dc2 = modff((f) / 1000, &cc2);
+
+	if (cc1 < cc2)
+	{
+		s[0] = '0'+ cc2;
+		s[1] = '0';
+		s[2] = '0';
+		s[3] = '0';
+		if (cc2 > 0)
+			f = f - cc2 * 1000;
+	}
+	else 
+	{
+		s[0] = '0' + cc1;
+		if (cc1 > 0)
+			f = f - cc1 * 1000;
+	}
+	
+	dc1 = modff((f -1)/ 100, &cc1);
+	dc2 = modff((f) / 100, &cc2);
+	if (cc1 < cc2)
+	{
+		s[1] = '0'+cc2;
+		s[2] = '0';
+		s[3] = '0';
+		if (cc2 > 0)
+			f = f - cc2 * 100;
+	}
+	else
+	{
+		s[1] = '0' + cc1;
+		if (cc1 > 0)
+			f = f - cc1 * 100;
+	}
+	dc1 = modff((f-1) / 10, &cc1);
+	dc2 = modff((f) / 10, &cc2);
+	if (cc1 < cc2)
+	{
+		s[2] = '0' + cc2;
+		s[3] = '0';
+		if (cc2 > 0)
+			f = f - cc2 * 10;
+	}
+	else
+	{
+		s[2] = '0' + cc1;
+		if (cc1 > 0)
+			f = f-cc1*10; 
+	}
+	dc1 = modff((f), &cc1);
+	a3 = cc1;
+	s[3] = '0' + a3;	
+	save_png_to_file(&fruit, s);
+	i++;
+	return i;
+}
+	int main()
+	{
+
+		    bitmap_t fruit;
+			const char *path;
+			int N, a,c= 0;
+			int x,y, bol =0;
+			//получаем число элементов массива пользователя
+			printf("Input the number of elements in your array: ");
+			scanf_s("%d", &N);
+			//создаем фон для пнг
+			fruit.width = N+1;
+			fruit.height = N+1;
+			fruit.pixels = calloc(sizeof(pixel_t), fruit.width * fruit.height);
+		for (y = 0; y < fruit.height; y++) {
+				for (x = 0; x < fruit.width; x++) {
+					pixel_t * pixel = pixel_at(&fruit, x, y);
+					pixel->red = 255;
+					pixel->green = 255;
+					pixel->blue = 255;
+					pixel->alpha = 255;
+				}
+			}
+			//выделение памяти под массив
+			int* mass;
+			mass = (int *)malloc(N * sizeof(int));	
+			char s[] = "0000.png";
+			//ввод элементов массива
+
+			c = random(mass,N,fruit,c,s);
+			//printf("%d", c);
+			//сортировка вставками
+
+
+			 InsertionSort(N, mass,fruit);
+			//вывод отсортированного массива на экран
+			printf("Sorted array:\n");
+			for (int i = 0; i < N; i++) {
+				printf("%d ", mass[i]);
+				//png(i, N, c, fruit, mass[i]);
+			}
+			printf("\n");
+			int z;
+			
+			for (z = N; z >= 0; z--)
+			{
+				for (x = 0; x < N; x++)
+				{
+					pixel_t * pixel = pixel_at(&fruit, x, z);
+					pixel->red = 255;
+					pixel->green = 255;
+					pixel->blue = 255;
+					pixel->alpha = 255;
+				}
+				for (int i = 0; i < N; i++)
+				{
+					if (z == mass[i])
+					{
+						//c++;
+						c=png(i, N, c, fruit,  mass[i],s,0);
+					}
+				}
+			}
+			//ввод искомого элемента
+			
+			printf("Input variable 'a' for search: ");
+			scanf_s("%d", &a);
+			int k;
+			//двоичный поиск
+			printf("Please select one of the suggested options:\n");
+			printf("1. Recursive binary search;\n 2. Iterative binary search;\n");
+			int Numbers = 0;
+			scanf_s("%d", &Numbers);
+			printf("%d ",Numbers);
+			if (Numbers == 1)
+				k = BinarySearch_Rec_Wrapper(mass, a, N, fruit,c,s);	//png_Wrapper(mass, a, N);
+			else if (Numbers == 2)
+				k = BinarySearch_Iter_Wrapper(mass, a, N,  fruit,c,s);
+			/*else if (Numbers == 3)
+				k = BinarySearch_Rec_Wrapper_first(mass, a, N,  fruit,c,s);*/
+			else
+			{
+				printf("Fail! Unknown error\n");
+				// выходим из программы
+				return 0;
+			}
+			if (k != -1)
+			{
+				printf("The index of the element is %d\n", k);
+			}
+			else
+				printf("The element isn't found!\n");	
+			//освобождение памяти
+	       free(mass);
+	        _getch();
+		// Exit из программы.
+	return 0;
+}
